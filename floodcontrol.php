@@ -88,19 +88,6 @@ function floodcontrol_civicrm_managed(&$entities) {
 }
 
 /**
- * Implements hook_civicrm_caseTypes().
- *
- * Generate a list of case-types.
- *
- * Note: This hook only runs in CiviCRM 4.4+.
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_caseTypes
- */
-function floodcontrol_civicrm_caseTypes(&$caseTypes) {
-  _floodcontrol_civix_civicrm_caseTypes($caseTypes);
-}
-
-/**
  * Implements hook_civicrm_angularModules().
  *
  * Generate a list of Angular modules.
@@ -115,38 +102,15 @@ function floodcontrol_civicrm_angularModules(&$angularModules) {
 }
 
 /**
- * Implements hook_civicrm_alterSettingsFolders().
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_alterSettingsFolders
+ * Implements hook_civicrm_buildForm().
  */
-function floodcontrol_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
-  _floodcontrol_civix_civicrm_alterSettingsFolders($metaDataFolders);
+function floodcontrol_civicrm_buildForm($formName, &$form) {
+  CRM_Floodcontrol_Form_Hooks::buildForm($formName, $form);
 }
 
-// --- Functions below this ship commented out. Uncomment as required. ---
-
 /**
- * Implements hook_civicrm_preProcess().
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_preProcess
- *
-function floodcontrol_civicrm_preProcess($formName, &$form) {
-
-} // */
-
-/**
- * Implements hook_civicrm_navigationMenu().
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_navigationMenu
- *
-function floodcontrol_civicrm_navigationMenu(&$menu) {
-  _floodcontrol_civix_insert_navigation_menu($menu, NULL, array(
-    'label' => E::ts('The Page'),
-    'name' => 'the_page',
-    'url' => 'civicrm/the-page',
-    'permission' => 'access CiviReport,access CiviContribute',
-    'operator' => 'OR',
-    'separator' => 0,
-  ));
-  _floodcontrol_civix_navigationMenu($menu);
-} // */
+ * Implements hook_civicrm_postProcess().
+ */
+function floodcontrol_civicrm_validateForm($formName, &$fields, &$files, &$form, &$errors) {
+  CRM_Floodcontrol_Form_Hooks::validateForm($formName, $fields, $files, $form, $errors);
+}
