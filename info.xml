@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<extension key="coop.symbiotic.floodcontrol" type="module">
+  <file>floodcontrol</file>
+  <name>Flood Control</name>
+  <description>Combat credit card fraud and other bot abuses</description>
+  <license>AGPL-3.0</license>
+  <maintainer>
+    <author>Mathieu Lutfy</author>
+    <email>mathieu@symbiotic.coop</email>
+  </maintainer>
+  <urls>
+    <url desc="Main Extension Page">https://github.com/coopsymbiotic/coop.symbiotic.floodcontrol</url>
+    <url desc="Documentation">https://github.com/coopsymbiotic/coop.symbiotic.floodcontrol</url>
+    <url desc="Support">https://github.com/coopsymbiotic/coop.symbiotic.floodcontrol</url>
+    <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
+  </urls>
+  <releaseDate>2017-09-20</releaseDate>
+  <version>1.0</version>
+  <develStage>alpha</develStage>
+  <compatibility>
+    <ver>4.6</ver>
+    <ver>4.7</ver>
+  </compatibility>
+  <comments></comments>
+  <civix>
+    <namespace>CRM/Floodcontrol</namespace>
+  </civix>
+</extension>
