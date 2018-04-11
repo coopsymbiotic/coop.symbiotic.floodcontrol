@@ -43,14 +43,17 @@ Installation
 
 Enable this extension in CiviCRM (Administer > System Settings > Manage Extensions).
 
-There are currently no configuration options for this extension. It enables
+There are currently limited configuration options for this extension. It enables
 itself on all contribution forms.
+
+Some configuration options are available at: /civicrm/admin/setting/floodcontrol?reset=1.
+
 
 Requirements
 ------------
 
-- CiviCRM 4.7 or later
-- PHP 5.6 or later
+- CiviCRM 5.0 or later
+- PHP 7 or later
 
 Support
 -------

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<menu>
+  <item>
+    <path>civicrm/admin/setting/floodcontrol</path>
+    <page_callback>CRM_Floodcontrol_Form_FloodcontrolSettings</page_callback>
+    <title>FloodcontrolSettings</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+</menu>

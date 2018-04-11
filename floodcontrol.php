@@ -114,3 +114,20 @@ function floodcontrol_civicrm_buildForm($formName, &$form) {
 function floodcontrol_civicrm_validateForm($formName, &$fields, &$files, &$form, &$errors) {
   CRM_Floodcontrol_Form_Hooks::validateForm($formName, $fields, $files, $form, $errors);
 }
+
+/**
+ * Implements hook_civicrm_config().
+ *
+ * @param $metaDataFolders
+ */
+function floodcontrol_civicrm_alterSettingsFolders(&$metaDataFolders){
+  static $configured = FALSE;
+  if ($configured) return;
+  $configured = TRUE;
+
+  $extRoot = dirname( __FILE__ ) . DIRECTORY_SEPARATOR;
+  $extDir = $extRoot . 'settings';
+  if(!in_array($extDir, $metaDataFolders)){
+    $metaDataFolders[] = $extDir;
+  }
+}

@@ -12,10 +12,6 @@ class CRM_Floodcontrol_Form_Hooks {
    * Generates the cache 'path' (key) for storing the information
    * on the form request. Currently uses a combination of the formName,
    * form ID and IP address.
-   *
-   * FIXME: it might be better to use the form qfKey if available?
-   * All QuickForm forms have one and would better identify visitors,
-   * especially if still using legacy IPv4 or proxy on a large network.
    */
   public static function getFormCachePath($formName, &$form) {
     $id = $form->getVar('_id');
@@ -48,50 +44,63 @@ class CRM_Floodcontrol_Form_Hooks {
   }
 
   /**
-   * Validate that the form has been loaded at least 30 seconds ago.
-   * If not, block the user for 10 seconds.
+   * Validate that the form has been loaded at least X seconds ago.
+   * If not, block the user for Y seconds.
    *
-   * Assuming it takes at least 10 seconds to fill in the simplest form, block
+   * Assuming it takes at least X seconds to fill in the simplest form, block
    * 10 seconds, reload and resubmit, a very caffeinated user should not be
-   * stuck more than once (the 30 seconds starts from the initial form load and
+   * stuck more than once (the X seconds starts from the initial form load and
    * is not reset when there are form errors).
-   * 
-   * FIXME: Make the 30 seconds requirement configurable?
-   * FIXME: Make the 10 seconds timeout configurable? 
    *
    * Called from @floodcontrol_civicrm_validateForm().
    */
   public static function validateForm($formName, &$fields, &$files, &$form, &$errors) {
-    if (in_array($formName, self::$_protected_forms)) {
-      $cache_path = self::getFormCachePath($formName, $form);
-      $time = time();
+    if (!in_array($formName, self::$_protected_forms)) {
+      return;
+    }
 
-      $data = CRM_Core_BAO_Cache::getItem('floodcontrol_contribution', $cache_path);
+    $minimum_seconds_before_post = Civi::settings()->get('floodcontrol_minimum_seconds_before_post');
 
-      if ($time - $data['time'] < 30) {
-        // Simulate a timeout and slow down the attacker
-        sleep(10);
+    if (!minimum_seconds_before_post) {
+      return;
+    }
 
-        $errors['qfKey'] = E::ts('There was a timeout while processing your request. Please wait a few seconds and try again.');
+    $cache_path = self::getFormCachePath($formName, $form);
+    $time = time();
 
-        // Increase before the reporterror email, because by default it's 0 anyway.
-        $data['count']++;
-        CRM_Core_BAO_Cache::setItem($data, 'floodcontrol_contribution', $cache_path);
+    $data = CRM_Core_BAO_Cache::getItem('floodcontrol_contribution', $cache_path);
+    $seconds_since_first_load = $time - $data['time'];
 
-        // If the 'reporterror' extension is enabled, send an email to admins.
-        // This can be useful to detect false-positives.
-        if (function_exists('reporterror_civicrm_handler')) {
-          $variables = [
-            'message' => 'floodcontrol',
-            'body' => $data['count'] . ' attempts since @' . date('Y-m-d H:i:s', $data['time']),
-          ];
+    if ($seconds_since_first_load < $minimum_seconds_before_post) {
+      Civi::log()->warning("floodcontrol: FAIL $formName, filled in $seconds_since_first_load seconds, attempt {$data['count']}");
 
-          reporterror_civicrm_handler($variables);
-        }
+      // Simulate a timeout and slow down the attacker
+      $slowdown = Civi::settings()->get('floodcontrol_delay_spammers_seconds');
+
+      if ($slowdown) {
+        sleep($slowdown);
       }
-      else {
-        CRM_Core_BAO_Cache::deleteGroup('floodcontrol_contribution', $cache_path);
+
+      $errors['qfKey'] = E::ts('There was a timeout while processing your request. Please wait a few seconds and try again.');
+
+      // Increase before the reporterror email, because by default it's 0 anyway.
+      $data['count']++;
+      CRM_Core_BAO_Cache::setItem($data, 'floodcontrol_contribution', $cache_path);
+
+      // If the 'reporterror' extension is enabled, send an email to admins.
+      // This can be useful to detect false-positives.
+      if (function_exists('reporterror_civicrm_handler')) {
+        $variables = [
+          'message' => 'floodcontrol',
+          'body' => $data['count'] . ' attempts since @' . date('Y-m-d H:i:s', $data['time']) . ' (' . $seconds_since_first_load . ')',
+        ];
+
+        reporterror_civicrm_handler($variables);
       }
+    }
+    else {
+      Civi::log()->info("floodcontrol: PASS $formName, filled in $seconds_since_first_load seconds");
+      CRM_Core_BAO_Cache::deleteGroup('floodcontrol_contribution', $cache_path);
     }
   }
 
