@@ -35,7 +35,8 @@ class CRM_Floodcontrol_Form_Hooks {
       if (empty($data)) {
         $data = [
           'time' => $time,
-          'count' => 0,
+          'fail' => 0,
+          'success' => 0,
         ];
       }
 
@@ -72,7 +73,7 @@ class CRM_Floodcontrol_Form_Hooks {
     $seconds_since_first_load = $time - $data['time'];
 
     if ($seconds_since_first_load < $minimum_seconds_before_post) {
-      Civi::log()->warning("floodcontrol: FAIL $formName, filled in $seconds_since_first_load seconds, attempt {$data['count']}");
+      Civi::log()->warning("floodcontrol: " . ip_address() . " FAIL $formName [{$data['fail']}], filled in $seconds_since_first_load seconds");
 
       // Simulate a timeout and slow down the attacker
       $slowdown = Civi::settings()->get('floodcontrol_delay_spammers_seconds');
@@ -84,23 +85,67 @@ class CRM_Floodcontrol_Form_Hooks {
       $errors['qfKey'] = E::ts('There was a timeout while processing your request. Please wait a few seconds and try again.');
 
       // Increase before the reporterror email, because by default it's 0 anyway.
-      $data['count']++;
+      $data['fail']++;
       CRM_Core_BAO_Cache::setItem($data, 'floodcontrol_contribution', $cache_path);
 
       // If the 'reporterror' extension is enabled, send an email to admins.
       // This can be useful to detect false-positives.
       if (function_exists('reporterror_civicrm_handler')) {
         $variables = [
-          'message' => 'floodcontrol',
-          'body' => $data['count'] . ' attempts since @' . date('Y-m-d H:i:s', $data['time']) . ' (' . $seconds_since_first_load . ')',
+          'message' => 'floodcontrol-1 ' . ip_address(),
+          'body' => $data['fail'] . ' attempts since @' . date('Y-m-d H:i:s', $data['time']) . ' (' . $seconds_since_first_load . ')',
         ];
 
         reporterror_civicrm_handler($variables);
       }
     }
     else {
-      Civi::log()->info("floodcontrol: PASS $formName, filled in $seconds_since_first_load seconds");
-      CRM_Core_BAO_Cache::deleteGroup('floodcontrol_contribution', $cache_path);
+      $data['success']++;
+      CRM_Core_BAO_Cache::setItem($data, 'floodcontrol_contribution', $cache_path);
+
+      $max_count = Civi::settings()->get('floodcontrol_max_success_count');
+      $max_period = Civi::settings()->get('floodcontrol_max_success_period');
+
+      if (!$max_count || !$max_period) {
+        Civi::log()->info("floodcontrol: " . ip_address() . " PASS [{$data['success']}] $formName, filled in $seconds_since_first_load seconds");
+        return;
+      }
+
+      // If the visitor has succeeded more than X time without Y seconds.
+      if ($data['success'] > $max_count && $seconds_since_first_load < $max_period) {
+        Civi::log()->warning("floodcontrol: " . ip_address() . " FAIL $formName [{$data['fail']}], blocked because {$data['success']} success in $seconds_since_first_load seconds");
+        $errors['qfKey'] = E::ts('There was a timeout while processing your request. Please wait a few seconds and try again.');
+
+        // If the 'reporterror' extension is enabled, send an email to admins.
+        // This can be useful to detect false-positives.
+        if (function_exists('reporterror_civicrm_handler')) {
+          $variables = [
+            'message' => 'floodcontrol-2 ' . ip_address(),
+            'body' => 'Blocked after ' . $data['success'] . ' attempts since @' . date('Y-m-d H:i:s', $data['time']) . ' (' . $seconds_since_first_load . ')',
+          ];
+
+          reporterror_civicrm_handler($variables);
+        }
+
+        // Simulate a timeout and slow down the attacker
+        $slowdown = Civi::settings()->get('floodcontrol_delay_spammers_seconds');
+
+        if ($slowdown) {
+          sleep($slowdown);
+        }
+
+        return;
+      }
+
+      if ($seconds_since_first_load > $max_period) {
+        // The period expired, reset floodcontrol
+        // Ex: say we set max 5 attempts in 120 seconds,
+        // the spammer tries 3 times within 250 seconds, then gets whitelisted forever,
+        // since the 'time' of first load doesn't get reset.
+        CRM_Core_BAO_Cache::deleteGroup('floodcontrol_contribution', $cache_path);
+      }
+
+      Civi::log()->info("floodcontrol: " . ip_address() . " PASS [{$data['success']}] $formName, filled in $seconds_since_first_load seconds");
     }
   }
 
