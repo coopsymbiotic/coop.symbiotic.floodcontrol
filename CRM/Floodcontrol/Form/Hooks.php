@@ -62,7 +62,7 @@ class CRM_Floodcontrol_Form_Hooks {
 
     $minimum_seconds_before_post = Civi::settings()->get('floodcontrol_minimum_seconds_before_post');
 
-    if (!minimum_seconds_before_post) {
+    if (!$minimum_seconds_before_post) {
       return;
     }
 
