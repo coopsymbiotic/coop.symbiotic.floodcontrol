@@ -21,6 +21,28 @@ class CRM_Floodcontrol_Form_Hooks {
   }
 
   /**
+   * If enabled in the settings, adds reCaptcha on the form.
+   */
+  public static function addCaptchaOnErrors(&$form) {
+    $add_captcha = Civi::settings()->get('floodcontrol_recaptcha');
+
+    if (!$add_captcha) {
+      return;
+    }
+
+    self::addCaptcha($form);
+  }
+
+  /**
+   * Enables reCaptcha.
+   */
+  public static function addCaptcha(&$form) {
+    $captcha = CRM_Utils_ReCAPTCHA::singleton();
+    $captcha->add($form);
+    $form->assign('isCaptcha', TRUE);
+  }
+
+  /**
    * Store the timestamp/user in the cache during form load.
    *
    * Called from @floodcontrol_civicrm_buildForm().
@@ -41,6 +63,18 @@ class CRM_Floodcontrol_Form_Hooks {
       }
 
       CRM_Core_BAO_Cache::setItem($data, 'floodcontrol_contribution', $cache_path);
+
+      // Enable reCaptcha
+      // buildForm() is called before validate(), so this tends to kick-in after
+      // the expected cut-off (if max_count_recaptcha=1, it will start on the 2nd submit)
+      // but at least it's more obvious later when the visitor returns, the captcha
+      // will be there on the first form load.
+      $max_count_recaptcha = Civi::settings()->get('floodcontrol_max_success_recaptcha');
+
+      if ($max_count_recaptcha && $data['success'] >= $max_count_recaptcha) {
+        Civi::log()->warning("floodcontrol: enabling captcha [{$data['success']} success of $max_count_recaptcha]");
+        self::addCaptcha($form);
+      }
     }
   }
 
@@ -98,6 +132,8 @@ class CRM_Floodcontrol_Form_Hooks {
 
         reporterror_civicrm_handler($variables);
       }
+
+      self::addCaptchaOnErrors($form);
     }
     else {
       $data['success']++;
@@ -133,6 +169,8 @@ class CRM_Floodcontrol_Form_Hooks {
         if ($slowdown) {
           sleep($slowdown);
         }
+
+        self::addCaptchaOnErrors($form);
 
         return;
       }
